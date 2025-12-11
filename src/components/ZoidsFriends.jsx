@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { zoidsFriendsItems } from '../data/zoidsFriendsItems';
 import { toArabicNumerals } from '../data/subtests';
+import { getImagePath } from '../utils/imagePath';
 
 const ZoidsFriends = ({ onComplete }) => {
   const [phase, setPhase] = useState('instructions'); // instructions, training, test
@@ -14,12 +15,12 @@ const ZoidsFriends = ({ onComplete }) => {
   const currentItem = items[currentItemIndex];
   
   const colorMap = {
-    red: { bg: 'bg-red-500', name: 'أحمر', image: '/zoids-friends/zoid-red.png' },
-    blue: { bg: 'bg-blue-500', name: 'أزرق', image: '/zoids-friends/zoid-blue.png' },
-    yellow: { bg: 'bg-yellow-400', name: 'أصفر', image: '/zoids-friends/zoid-yellow.png' },
-    green: { bg: 'bg-green-500', name: 'أخضر', image: '/zoids-friends/zoid-green.png' },
-    orange: { bg: 'bg-orange-500', name: 'برتقالي', image: '/zoids-friends/zoid-orange.png' },
-    purple: { bg: 'bg-purple-500', name: 'بنفسجي', image: '/zoids-friends/zoid-purple.png' }
+    red: { bg: 'bg-red-500', name: 'أحمر', image: getImagePath('zoids-friends/zoid-red.png') },
+    blue: { bg: 'bg-blue-500', name: 'أزرق', image: getImagePath('zoids-friends/zoid-blue.png') },
+    yellow: { bg: 'bg-yellow-400', name: 'أصفر', image: getImagePath('zoids-friends/zoid-yellow.png') },
+    green: { bg: 'bg-green-500', name: 'أخضر', image: getImagePath('zoids-friends/zoid-green.png') },
+    orange: { bg: 'bg-orange-500', name: 'برتقالي', image: getImagePath('zoids-friends/zoid-orange.png') },
+    purple: { bg: 'bg-purple-500', name: 'بنفسجي', image: getImagePath('zoids-friends/zoid-purple.png') }
   };
 
   // Start stimulus presentation
