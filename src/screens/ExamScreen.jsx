@@ -1,190 +1,133 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { questions } from '../data/questions'
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { subtests, getSubtestOrder } from '../data/subtests';
+import ZoidsFriends from '../components/ZoidsFriends';
 
 function ExamScreen() {
-  const navigate = useNavigate()
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [answers, setAnswers] = useState(() => {
-    const saved = localStorage.getItem('examAnswers')
-    return saved ? JSON.parse(saved) : {}
-  })
-  const [timeRemaining, setTimeRemaining] = useState(() => {
-    const saved = localStorage.getItem('examTime')
-    return saved ? parseInt(saved) : 3600 // 60 minutes in seconds
-  })
+  const navigate = useNavigate();
+  const [currentSubtestIndex, setCurrentSubtestIndex] = useState(0);
+  const [allResponses, setAllResponses] = useState({});
+  const [sessionStartTime] = useState(Date.now());
+  
+  const subtestOrder = getSubtestOrder();
+  const currentSubtestId = subtestOrder[currentSubtestIndex];
+  const currentSubtest = subtests.find(st => st.id === currentSubtestId);
 
-  const handleAnswerSelect = (questionId, answerIndex) => {
-    const newAnswers = {
-      ...answers,
-      [questionId]: answerIndex
-    }
-    setAnswers(newAnswers)
-    localStorage.setItem('examAnswers', JSON.stringify(newAnswers))
-  }
-
-  const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
-    }
-  }
-
-  const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1)
-    }
-  }
-
-  const handleSubmit = () => {
-    if (window.confirm('Are you sure you want to submit the exam? You cannot change your answers after submission.')) {
-      localStorage.removeItem('examAnswers')
-      localStorage.removeItem('examTime')
-      navigate('/results', { state: { answers } })
-    }
-  }
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  // Timer effect
+  // Load saved session if exists
   useEffect(() => {
-    if (timeRemaining > 0) {
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => {
-          const newTime = prev - 1
-          localStorage.setItem('examTime', newTime.toString())
-          if (newTime <= 0) {
-            localStorage.removeItem('examAnswers')
-            localStorage.removeItem('examTime')
-            navigate('/results', { state: { answers } })
-            return 0
-          }
-          return newTime
-        })
-      }, 1000)
-      return () => clearInterval(timer)
+    const saved = localStorage.getItem('acops-session');
+    if (saved) {
+      const session = JSON.parse(saved);
+      setCurrentSubtestIndex(session.currentSubtestIndex || 0);
+      setAllResponses(session.responses || {});
     }
-  }, [timeRemaining, answers, navigate])
+  }, []);
 
-  const currentQ = questions[currentQuestion]
-  const progress = ((currentQuestion + 1) / questions.length) * 100
+  // Save session on every update
+  useEffect(() => {
+    const session = {
+      currentSubtestIndex,
+      responses: allResponses,
+      startTime: sessionStartTime,
+      lastUpdate: Date.now()
+    };
+    localStorage.setItem('acops-session', JSON.stringify(session));
+  }, [currentSubtestIndex, allResponses, sessionStartTime]);
+
+  // Handle subtest completion
+  const handleSubtestComplete = (subtestData) => {
+    const newResponses = {
+      ...allResponses,
+      [subtestData.subtestId]: subtestData
+    };
+    setAllResponses(newResponses);
+
+    // Move to next subtest or finish
+    if (currentSubtestIndex < subtestOrder.length - 1) {
+      setCurrentSubtestIndex(currentSubtestIndex + 1);
+    } else {
+      // All subtests completed
+      localStorage.setItem('acops-responses', JSON.stringify(newResponses));
+      localStorage.removeItem('acops-session');
+      navigate('/results');
+    }
+  };
+
+  // Render current subtest
+  const renderSubtest = () => {
+    switch (currentSubtestId) {
+      case 'zoids-friends':
+        return <ZoidsFriends onComplete={handleSubtestComplete} />;
+      
+      // TODO: Add other subtests
+      case 'toy-box':
+      case 'rabbits':
+      case 'zoids-letters':
+      case 'zoids-letter-names':
+      case 'races':
+      case 'rhymes':
+      case 'wock':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 flex items-center justify-center p-6">
+            <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full text-center">
+              <h2 className="text-4xl font-bold text-purple-600 mb-4 font-cairo">
+                {currentSubtest.nameAr}
+              </h2>
+              <p className="text-xl text-gray-600 mb-8 font-cairo">
+                {currentSubtest.description}
+              </p>
+              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-6 mb-6">
+                <p className="text-lg font-cairo">
+                  🚧 هذا الاختبار قيد التطوير
+                </p>
+              </div>
+              <button
+                onClick={() => handleSubtestComplete({
+                  subtestId: currentSubtestId,
+                  responses: {},
+                  totalItems: currentSubtest.totalItems,
+                  correctCount: 0
+                })}
+                className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xl font-bold rounded-2xl hover:from-purple-600 hover:to-pink-600 transition-all font-cairo"
+              >
+                تخطي إلى الاختبار التالي →
+              </button>
+            </div>
+          </div>
+        );
+      
+      default:
+        return <div>Unknown subtest</div>;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                ACOPS Exam Module
-              </h1>
-              <p className="text-gray-600 text-sm">
-                Question {currentQuestion + 1} of {questions.length}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-600 mb-1">Time Remaining</div>
-              <div className={`text-xl font-bold ${timeRemaining < 300 ? 'text-red-600' : 'text-gray-900'}`}>
-                {formatTime(timeRemaining)}
-              </div>
-            </div>
+    <div>
+      {/* Progress indicator at top */}
+      <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
+        <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600 font-cairo">
+              الاختبار {currentSubtestIndex + 1} من {subtestOrder.length}
+            </span>
+            <span className="text-sm font-bold text-purple-600 font-cairo">
+              {currentSubtest?.nameAr}
+            </span>
           </div>
-          <div className="mt-4">
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${((currentSubtestIndex + 1) / subtestOrder.length) * 100}%` }}
+            />
           </div>
         </div>
       </div>
-
-      {/* Question Section */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {currentQ.question}
-            </h2>
-            <div className="space-y-3">
-              {currentQ.options.map((option, index) => (
-                <label
-                  key={index}
-                  className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    answers[currentQ.id] === index
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`question-${currentQ.id}`}
-                    checked={answers[currentQ.id] === index}
-                    onChange={() => handleAnswerSelect(currentQ.id, index)}
-                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-3 text-gray-900">{option}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <div className="flex justify-between items-center pt-6 border-t">
-            <button
-              onClick={handlePrevious}
-              disabled={currentQuestion === 0}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                currentQuestion === 0
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Previous
-            </button>
-            <div className="flex gap-2">
-              {questions.map((q, idx) => (
-                <button
-                  key={q.id}
-                  onClick={() => setCurrentQuestion(idx)}
-                  className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
-                    answers[q.id] !== undefined
-                      ? 'bg-green-500 text-white'
-                      : idx === currentQuestion
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {idx + 1}
-                </button>
-              ))}
-            </div>
-            {currentQuestion === questions.length - 1 ? (
-              <button
-                onClick={handleSubmit}
-                className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Submit Exam
-              </button>
-            ) : (
-              <button
-                onClick={handleNext}
-                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Next
-              </button>
-            )}
-          </div>
-        </div>
+      
+      <div className="pt-20">
+        {renderSubtest()}
       </div>
     </div>
-  )
+  );
 }
 
-export default ExamScreen
-
+export default ExamScreen;

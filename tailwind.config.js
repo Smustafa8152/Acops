@@ -6,8 +6,10 @@ export default {
   ],
   theme: {
     fontFamily: {
-      sans: ['Inter', 'system-ui', 'sans-serif'],
-      'arabic': ['Noto Sans Arabic', 'sans-serif'],
+      sans: ['Cairo', 'Inter', 'system-ui', 'sans-serif'],
+      'arabic': ['Cairo', 'Tajawal', 'Noto Sans Arabic', 'sans-serif'],
+      'cairo': ['Cairo', 'sans-serif'],
+      'tajawal': ['Tajawal', 'sans-serif'],
     },
     extend: {
       animation: {
